@@ -1,0 +1,248 @@
+@font-face {
+  font-family: 'Hippie';
+  src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/2610081905@hippie/hippie/hippie_히피체.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+
+:root {
+  --bg: #f6f5f1;
+  --card: #ffffff;
+  --text: #1d1d1f;
+  --muted: #6e6e73;
+  --line: #e4e2dc;
+  --accent: #ff6b35;
+  --accent-soft: #ffe3d6;
+  --bar-bg: #eeece6;
+  --radius: 14px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  /* 화면 높이에 딱 맞춰 스크롤 없이 표시 */
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* ---------- 헤더 ---------- */
+.header {
+  padding: 20px 32px 14px;
+  text-align: left;
+  flex-shrink: 0;
+}
+
+.title {
+  font-family: 'Hippie', sans-serif;
+  font-weight: 400;
+  font-size: clamp(26px, 4vw, 44px);
+  line-height: 1.2;
+}
+
+.status {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* ---------- 4열 그리드 ---------- */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
+  gap: 24px;
+  padding: 0 32px 24px;
+  width: 100%;
+  max-width: 1600px;
+  flex: 1;
+  min-height: 0;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+  min-height: 0;
+  transition: border-color .2s, box-shadow .2s;
+}
+
+.card.voted {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.num {
+  font-family: 'Hippie', sans-serif;
+  font-size: 36px;
+  line-height: 1;
+  text-align: center;
+}
+
+/* 남은 높이를 채우고, 이미지는 450x1351 비율을 유지한 채 그 안에 맞춤 */
+.thumb {
+  display: block;
+  width: 100%;
+  flex: 1 1 0;
+  min-height: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: zoom-in;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: transform .3s;
+}
+
+.thumb:hover img { transform: scale(1.02); }
+
+.vote-btn {
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 12px;
+  border-radius: 10px;
+  border: 2px solid var(--accent);
+  background: var(--card);
+  color: var(--accent);
+  cursor: pointer;
+  transition: background .15s, color .15s, opacity .15s;
+}
+
+.vote-btn:hover:not(:disabled) { background: var(--accent); color: #fff; }
+.vote-btn:disabled { cursor: default; opacity: .45; }
+.card.voted .vote-btn { background: var(--accent); color: #fff; opacity: 1; }
+
+/* ---------- 결과 막대 ---------- */
+.result { display: none; flex-direction: column; gap: 6px; }
+.show-results .result { display: flex; }
+
+.bar {
+  height: 14px;
+  background: var(--bar-bg);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width .6s cubic-bezier(.2, .8, .2, 1);
+}
+
+.result-text {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.result-text .count { font-weight: 700; }
+.result-text .pct { color: var(--muted); }
+
+/* ---------- 모달 ---------- */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .85);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: auto;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .25s, visibility .25s;
+  z-index: 100;
+  cursor: zoom-out;
+}
+
+.modal.open { opacity: 1; visibility: visible; }
+
+.modal-body {
+  padding: 40px 16px;
+  margin: auto;
+}
+
+/* 원본 크기(450px) 표시, 작은 화면에서는 화면 폭에 맞춤 */
+.modal-body img {
+  display: block;
+  width: 450px;
+  max-width: 100%;
+  height: auto;
+  cursor: default;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, .5);
+}
+
+.modal-close {
+  position: fixed;
+  top: 16px;
+  right: 20px;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .15);
+  color: #fff;
+  font-size: 30px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 101;
+}
+
+.modal-close:hover { background: rgba(255, 255, 255, .3); }
+
+/* ---------- 토스트 ---------- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translate(-50%, 20px);
+  background: var(--text);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 999px;
+  font-size: 14px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s, transform .25s;
+  z-index: 200;
+}
+
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- 반응형 ---------- */
+@media (max-width: 900px) {
+  .header { padding: 14px 16px 10px; }
+  .grid { gap: 10px; padding: 0 16px 16px; }
+  .card { padding: 8px; gap: 8px; border-radius: 10px; }
+  .num { font-size: 24px; }
+  .vote-btn { font-size: 12px; padding: 8px 4px; }
+  .result-text { font-size: 12px; flex-direction: column; align-items: center; }
+  .bar { height: 10px; }
+}
+
+@media (max-height: 600px) {
+  .header { padding-top: 10px; padding-bottom: 8px; }
+  .title { font-size: 24px; }
+  .status { margin-top: 2px; font-size: 12px; }
+  .card { gap: 6px; padding: 8px; }
+  .num { font-size: 22px; }
+  .vote-btn { padding: 6px; }
+}
