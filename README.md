@@ -24,6 +24,13 @@ GitHub Pages(정적 페이지) + Google Apps Script + Google Sheets로 동작하
 > `Code.gs`를 수정했다면 **배포 → 배포 관리 → 수정 → 새 버전**으로 다시 배포해야 반영됩니다.
 > 투표 데이터는 스프레드시트의 `votes` 시트에 저장되며, 초기화하려면 B열 숫자를 0으로 바꾸면 됩니다.
 
+## 관리자 결과보기
+1. Apps Script **프로젝트 설정(톱니바퀴) → 스크립트 속성 → 속성 추가**
+   - 속성: `ADMIN_PASSWORD` / 값: 원하는 비밀번호
+2. 페이지 우측 상단 **관리자 결과보기** → 비밀번호 입력 → 투표하지 않아도 결과 표시
+   - 비밀번호는 GAS가 확인하므로 공개 저장소에 노출되지 않습니다.
+   - 로그인 상태는 탭을 닫으면 해제됩니다.
+
 ## 2. GitHub Pages 배포
 1. 새 저장소에 `index.html`, `style.css`, `script.js`, `image1~4.png`를 업로드합니다.
 2. 저장소 **Settings → Pages → Branch: main / (root)** 저장.

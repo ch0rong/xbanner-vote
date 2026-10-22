@@ -35,7 +35,26 @@ body {
   padding: 20px 32px 14px;
   text-align: left;
   flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
 }
+
+.admin-btn {
+  flex-shrink: 0;
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.admin-btn:hover { color: var(--text); border-color: var(--muted); }
+.admin-btn.on { background: var(--text); border-color: var(--text); color: #fff; }
 
 .title {
   font-family: 'Hippie', sans-serif;
@@ -230,6 +249,7 @@ body {
 /* ---------- 반응형 ---------- */
 @media (max-width: 900px) {
   .header { padding: 14px 16px 10px; }
+  .admin-btn { font-size: 12px; padding: 6px 10px; }
   .grid { gap: 10px; padding: 0 16px 16px; }
   .card { padding: 8px; gap: 8px; border-radius: 10px; }
   .num { font-size: 24px; }

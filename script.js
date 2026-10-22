@@ -4,14 +4,17 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbzQtxxpJix5iB2iUu90jckM
 const OPTIONS = [1, 2, 3, 4];
 const POLL_MS = 5000;               // 실시간 갱신 주기
 const STORAGE_KEY = 'xbanner-vote';  // 브라우저당 1표 기록
+const ADMIN_KEY = 'xbanner-admin';   // 관리자 로그인 (탭을 닫으면 해제)
 
 const grid = document.getElementById('grid');
 const statusEl = document.getElementById('status');
 const modal = document.getElementById('modal');
 const modalImg = document.getElementById('modalImg');
 const toastEl = document.getElementById('toast');
+const adminBtn = document.getElementById('adminBtn');
 
 let myVote = readVote();
+let isAdmin = readAdmin();
 let sending = false;
 
 // ---------- 카드 생성 ----------
@@ -36,6 +39,7 @@ OPTIONS.forEach((n) => {
 });
 
 applyVotedState();
+applyAdminState();
 
 // ---------- 투표 ----------
 async function vote(n) {
@@ -94,9 +98,9 @@ function render(counts) {
     card.querySelector('.pct').textContent = `${pct}%`;
   });
 
-  statusEl.textContent = myVote
-    ? `총 ${total}명 참여 · 내 선택: ${myVote}번`
-    : `총 ${total}명 참여 · 마음에 드는 시안에 투표해 주세요`;
+  if (isAdmin) statusEl.textContent = `[관리자] 총 ${total}명 참여`;
+  else if (myVote) statusEl.textContent = `총 ${total}명 참여 · 내 선택: ${myVote}번`;
+  else statusEl.textContent = `총 ${total}명 참여 · 마음에 드는 시안에 투표해 주세요`;
 }
 
 function applyVotedState() {
@@ -108,6 +112,50 @@ function applyVotedState() {
     card.classList.add('voted');
     card.querySelector('.vote-btn').textContent = '내가 투표한 시안';
   }
+}
+
+// ---------- 관리자 ----------
+adminBtn.addEventListener('click', async () => {
+  if (isAdmin) {
+    isAdmin = false;
+    saveAdmin(false);
+    applyAdminState();
+    loadCounts();
+    toast('관리자 모드를 종료했어요.');
+    return;
+  }
+
+  const password = prompt('관리자 비밀번호를 입력하세요.');
+  if (!password) return;
+
+  adminBtn.disabled = true;
+  try {
+    // 비밀번호는 GAS의 스크립트 속성(ADMIN_PASSWORD)과 비교합니다.
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'admin', password }),
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'unauthorized');
+
+    isAdmin = true;
+    saveAdmin(true);
+    applyAdminState();
+    render(data.counts);
+    toast('관리자 모드로 결과를 표시합니다.');
+  } catch (err) {
+    console.error(err);
+    toast('비밀번호가 올바르지 않아요.');
+  } finally {
+    adminBtn.disabled = false;
+  }
+});
+
+function applyAdminState() {
+  grid.classList.toggle('show-results', isAdmin || !!myVote);
+  adminBtn.classList.toggle('on', isAdmin);
+  adminBtn.textContent = isAdmin ? '관리자 로그아웃' : '관리자 결과보기';
 }
 
 function setButtonsDisabled(disabled) {
@@ -143,6 +191,15 @@ function readVote() {
 }
 function saveVote(n) {
   try { localStorage.setItem(STORAGE_KEY, String(n)); } catch {}
+}
+function readAdmin() {
+  try { return sessionStorage.getItem(ADMIN_KEY) === '1'; } catch { return false; }
+}
+function saveAdmin(on) {
+  try {
+    if (on) sessionStorage.setItem(ADMIN_KEY, '1');
+    else sessionStorage.removeItem(ADMIN_KEY);
+  } catch {}
 }
 
 let toastTimer;

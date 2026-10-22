@@ -4,6 +4,9 @@
  * 시트 구조 (시트 이름: votes)
  *   A열: 시안 번호(1~4) / B열: 득표수
  *   첫 실행 시 자동으로 생성됩니다.
+ *
+ * 관리자 비밀번호
+ *   프로젝트 설정 → 스크립트 속성 → ADMIN_PASSWORD 에 저장
  */
 const SHEET_NAME = 'votes';
 const OPTIONS = [1, 2, 3, 4];
@@ -15,6 +18,15 @@ function doGet(e) {
 function doPost(e) {
   try {
     const body = JSON.parse(e.postData.contents || '{}');
+
+    if (body.action === 'admin') {
+      const password = PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD');
+      if (!password || body.password !== password) {
+        return json({ ok: false, error: 'unauthorized' });
+      }
+      return json({ ok: true, counts: getCounts() });
+    }
+
     const option = Number(body.option);
     if (body.action !== 'vote' || OPTIONS.indexOf(option) === -1) {
       return json({ ok: false, error: 'invalid option' });
