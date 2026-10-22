@@ -1,5 +1,5 @@
 // ★ Google Apps Script 웹 앱 배포 후 받은 URL로 교체하세요.
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbwcTQRT22STjQCGmXLKANJZV891QFTtO77FrVFDvfx6fuBaGT_N_Xk4ki4-nXWOXmGi/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzERH23BgAYkFZiRAhoT_wdLxJhh2Dw97Vo0vytVvkZBuYDk6IMFQbN1QXDEPUBRnVk/exec';
 
 const OPTIONS = [1, 2, 3, 4];
 const POLL_MS = 5000;                   // 실시간 갱신 주기
