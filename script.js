@@ -1,10 +1,10 @@
 // ★ Google Apps Script 웹 앱 배포 후 받은 URL로 교체하세요.
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzQtxxpJix5iB2iUu90jckMyPUNmVaUOH5hSc81hSM4mgmEzt5pcoE0T4BC958CuL8q/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwcTQRT22STjQCGmXLKANJZV891QFTtO77FrVFDvfx6fuBaGT_N_Xk4ki4-nXWOXmGi/exec';
 
 const OPTIONS = [1, 2, 3, 4];
-const POLL_MS = 5000;               // 실시간 갱신 주기
-const STORAGE_KEY = 'xbanner-vote';  // 브라우저당 1표 기록
-const ADMIN_KEY = 'xbanner-admin';   // 관리자 로그인 (탭을 닫으면 해제)
+const POLL_MS = 5000;                   // 실시간 갱신 주기
+const STORAGE_KEY = 'xbanner-vote-v2';  // 브라우저당 1표 기록 { option, token }
+const ADMIN_KEY = 'xbanner-admin-v2';   // 관리자 토큰 (탭을 닫으면 해제)
 
 const grid = document.getElementById('grid');
 const statusEl = document.getElementById('status');
@@ -13,8 +13,8 @@ const modalImg = document.getElementById('modalImg');
 const toastEl = document.getElementById('toast');
 const adminBtn = document.getElementById('adminBtn');
 
-let myVote = readVote();
-let isAdmin = readAdmin();
+let myVote = readVote();        // { option, token } | null
+let adminToken = readAdmin();   // string | null
 let sending = false;
 
 // ---------- 카드 생성 ----------
@@ -38,8 +38,18 @@ OPTIONS.forEach((n) => {
   grid.appendChild(card);
 });
 
-applyVotedState();
-applyAdminState();
+applyState();
+
+// ---------- 서버 통신 ----------
+// text/plain 으로 보내야 CORS preflight 없이 GAS에 전달됩니다.
+async function post(payload) {
+  const res = await fetch(GAS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload),
+  });
+  return res.json();
+}
 
 // ---------- 투표 ----------
 async function vote(n) {
@@ -49,18 +59,12 @@ async function vote(n) {
   sending = true;
   setButtonsDisabled(true);
   try {
-    // text/plain 으로 보내야 CORS preflight 없이 GAS에 전달됩니다.
-    const res = await fetch(GAS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'vote', option: n }),
-    });
-    const data = await res.json();
+    const data = await post({ action: 'vote', option: n });
     if (!data.ok) throw new Error(data.error || '투표 실패');
 
-    myVote = n;
-    saveVote(n);
-    applyVotedState();
+    myVote = { option: n, token: data.token };
+    saveVote(myVote);
+    applyState();
     render(data.counts);
     toast(`${n}번 시안에 투표했어요!`);
   } catch (err) {
@@ -72,12 +76,14 @@ async function vote(n) {
   }
 }
 
-// ---------- 현황 불러오기 ----------
+// ---------- 현황 불러오기 (투표했거나 관리자일 때만) ----------
 async function loadCounts() {
+  const token = adminToken || (myVote && myVote.token);
+  if (!token) return;
   try {
-    const res = await fetch(`${GAS_URL}?action=get&t=${Date.now()}`);
-    const data = await res.json();
+    const data = await post({ action: 'results', token });
     if (data.ok) render(data.counts);
+    else if (adminToken) logoutAdmin();
   } catch (err) {
     console.error(err);
     statusEl.textContent = '투표 현황을 불러오지 못했어요.';
@@ -98,28 +104,36 @@ function render(counts) {
     card.querySelector('.pct').textContent = `${pct}%`;
   });
 
-  if (isAdmin) statusEl.textContent = `[관리자] 총 ${total}명 참여`;
-  else if (myVote) statusEl.textContent = `총 ${total}명 참여 · 내 선택: ${myVote}번`;
-  else statusEl.textContent = `총 ${total}명 참여 · 마음에 드는 시안에 투표해 주세요`;
+  if (adminToken) statusEl.textContent = `[관리자] 총 ${total}명 참여`;
+  else if (myVote) statusEl.textContent = `총 ${total}명 참여 · 내 선택: ${myVote.option}번`;
 }
 
-function applyVotedState() {
-  if (!myVote) return;
-  grid.classList.add('show-results');
-  setButtonsDisabled(true);
-  const card = grid.querySelector(`[data-option="${myVote}"]`);
-  if (card) {
-    card.classList.add('voted');
-    card.querySelector('.vote-btn').textContent = '내가 투표한 시안';
+function applyState() {
+  const canSee = !!adminToken || !!myVote;
+  grid.classList.toggle('show-results', canSee);
+  adminBtn.classList.toggle('on', !!adminToken);
+  adminBtn.textContent = adminToken ? '관리자 로그아웃' : '관리자 결과보기';
+
+  if (myVote) {
+    setButtonsDisabled(true);
+    const card = grid.querySelector(`[data-option="${myVote.option}"]`);
+    if (card) {
+      card.classList.add('voted');
+      card.querySelector('.vote-btn').textContent = '내가 투표한 시안';
+    }
   }
+
+  if (!canSee) statusEl.textContent = '마음에 드는 시안에 투표해 주세요 · 투표 후 결과를 볼 수 있어요';
+}
+
+function setButtonsDisabled(disabled) {
+  grid.querySelectorAll('.vote-btn').forEach((b) => (b.disabled = disabled));
 }
 
 // ---------- 관리자 ----------
 adminBtn.addEventListener('click', async () => {
-  if (isAdmin) {
-    isAdmin = false;
-    saveAdmin(false);
-    applyAdminState();
+  if (adminToken) {
+    logoutAdmin();
     loadCounts();
     toast('관리자 모드를 종료했어요.');
     return;
@@ -131,17 +145,12 @@ adminBtn.addEventListener('click', async () => {
   adminBtn.disabled = true;
   try {
     // 비밀번호는 GAS의 스크립트 속성(ADMIN_PASSWORD)과 비교합니다.
-    const res = await fetch(GAS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'admin', password }),
-    });
-    const data = await res.json();
+    const data = await post({ action: 'admin', password });
     if (!data.ok) throw new Error(data.error || 'unauthorized');
 
-    isAdmin = true;
-    saveAdmin(true);
-    applyAdminState();
+    adminToken = data.token;
+    saveAdmin(adminToken);
+    applyState();
     render(data.counts);
     toast('관리자 모드로 결과를 표시합니다.');
   } catch (err) {
@@ -152,14 +161,10 @@ adminBtn.addEventListener('click', async () => {
   }
 });
 
-function applyAdminState() {
-  grid.classList.toggle('show-results', isAdmin || !!myVote);
-  adminBtn.classList.toggle('on', isAdmin);
-  adminBtn.textContent = isAdmin ? '관리자 로그아웃' : '관리자 결과보기';
-}
-
-function setButtonsDisabled(disabled) {
-  grid.querySelectorAll('.vote-btn').forEach((b) => (b.disabled = disabled));
+function logoutAdmin() {
+  adminToken = null;
+  saveAdmin(null);
+  applyState();
 }
 
 // ---------- 모달 ----------
@@ -187,17 +192,20 @@ document.addEventListener('keydown', (e) => {
 
 // ---------- 유틸 ----------
 function readVote() {
-  try { return Number(localStorage.getItem(STORAGE_KEY)) || null; } catch { return null; }
+  try {
+    const v = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    return v && OPTIONS.includes(v.option) && v.token ? v : null;
+  } catch { return null; }
 }
-function saveVote(n) {
-  try { localStorage.setItem(STORAGE_KEY, String(n)); } catch {}
+function saveVote(v) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(v)); } catch {}
 }
 function readAdmin() {
-  try { return sessionStorage.getItem(ADMIN_KEY) === '1'; } catch { return false; }
+  try { return sessionStorage.getItem(ADMIN_KEY) || null; } catch { return null; }
 }
-function saveAdmin(on) {
+function saveAdmin(token) {
   try {
-    if (on) sessionStorage.setItem(ADMIN_KEY, '1');
+    if (token) sessionStorage.setItem(ADMIN_KEY, token);
     else sessionStorage.removeItem(ADMIN_KEY);
   } catch {}
 }
